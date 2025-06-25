@@ -1,0 +1,36 @@
+# .air.toml - A single, unified configuration for a multi-service monorepo
+
+# The working directory for the air process
+root = "."
+# Temporary directory for build artifacts
+tmp_dir = "tmp"
+
+[build]
+  # === The Core Logic ===
+  # This command builds a uniquely named binary for each service using its
+  # SERVICE_NAME environment variable (e.g., builds to ./tmp/order-service).
+  cmd = "go build -o ./tmp/${SERVICE_NAME} ./cmd/${SERVICE_NAME}/main/main.go"
+
+  # This tells air which binary to execute. Since this is now dynamic, we use
+  # it as a template. The `full_bin` command below is more explicit.
+  bin = "tmp/${SERVICE_NAME}"
+
+  # This is the most robust way to run the app. It runs AFTER the 'cmd' build.
+  # 1. It makes the uniquely named binary executable (solves "Permission denied").
+  # 2. It runs that unique binary (solves the "syntax error" by never running an empty file).
+  full_bin = "chmod +x ./tmp/${SERVICE_NAME} && ./tmp/${SERVICE_NAME}"
+
+  # Watch all relevant Go source directories.
+  include_dir = ["cmd", "services", "internal"]
+  
+  # Standard settings
+  include_ext = ["go"]
+  exclude_dir = ["tmp", "vendor", "bin"]
+
+[log]
+  # Show timestamps in the log output.
+  time = true
+
+[misc]
+  # Delete the tmp directory when air exits to ensure a clean state.
+  clean_on_exit = true

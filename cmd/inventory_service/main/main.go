@@ -1,16 +1,11 @@
-package orderservice
+package main
 
 import (
-	"log/slog"
-	"os"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
 func main() {
-	slog.New(slog.NewJSONHandler(os.Stdout, nil)).With("service", "order-service")
-
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)

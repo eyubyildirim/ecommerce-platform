@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # --- Infrastructure Services ---
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ecommerce_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d ecommerce_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: rabbitmq_broker
+    ports:
+      - "5672:5672"   # Port for AMQP clients (your Go services)
+      - "15672:15672" # Port for the web management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics check_port_connectivity
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # --- Application Services ---
+  order-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development # Use the 'development' stage from our Dockerfile
+      args:
+        SERVICE_NAME: order_service
+    container_name: order_service_app
+    ports:
+      - "8081:8081"
+    volumes:
+      - .:/app # Mount local code for live-reloading
+    environment:
+      - SERVICE_NAME=order_service # For .air.toml
+      - DB_URL=postgres://user:password@postgres:5432/ecommerce_db?sslmode=disable
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - PORT=8081
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+      args:
+        SERVICE_NAME: payment_service
+    container_name: payment_service_app
+    volumes:
+      - .:/app
+    environment:
+      - SERVICE_NAME=payment_service
+      - DB_URL=postgres://user:password@postgres:5432/ecommerce_db?sslmode=disable
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  inventory-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+      args:
+        SERVICE_NAME: inventory_service
+    container_name: inventory_service_app
+    ports:
+      - "8082:8082" # Example of exposing another service's port
+    volumes:
+      - .:/app
+    environment:
+      - SERVICE_NAME=inventory_service
+      - DB_URL=postgres://user:password@postgres:5432/ecommerce_db?sslmode=disable
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - PORT=8082
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
