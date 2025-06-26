@@ -27,7 +27,7 @@ func (or *OrderPgRepository) Create(ctx context.Context, order *model.Order) err
 	repoLogger.Info("UUID generated for order", "order", order)
 
 	createdOrder := or.db.QueryRowContext(ctx, exec, order.ID, order.UserID, order.Items, order.TotalPrice, order.Status)
-	err := createdOrder.Scan(order.CreatedAt, order.UpdatedAt)
+	err := createdOrder.Scan(&order.CreatedAt, &order.UpdatedAt)
 	if err != nil {
 		repoLogger.Error("Could not create record in database", "order", order, "error", err)
 		return err
@@ -43,12 +43,12 @@ func (or *OrderPgRepository) FindByID(ctx context.Context, id string) (*model.Or
 
 	repoLogger.Info("FindByID started", "order_id", id)
 
-	query := `SELECT id, user_id, items, total_price, status, created_at, status FROM order WHERE id = $1`
+	query := `SELECT id, user_id, items, total_price, status, created_at, updated_at FROM order WHERE id = $1`
 
 	row := or.db.QueryRowContext(ctx, query, id)
 
 	var order model.Order
-	err := row.Scan(&order)
+	err := row.Scan(&order.ID, &order.UserID, &order.Items, &order.TotalPrice, &order.Status, &order.CreatedAt, &order.UpdatedAt)
 	if err != nil {
 		if errors.Is(sql.ErrNoRows, err) {
 			repoLogger.Error("No order with given id", "order_id", id, "error", err)
