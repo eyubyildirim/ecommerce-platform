@@ -43,7 +43,7 @@ func (or *OrderPgRepository) FindByID(ctx context.Context, id string) (*model.Or
 
 	repoLogger.Info("FindByID started", "order_id", id)
 
-	query := `SELECT id, user_id, items, total_price, status, created_at, updated_at FROM order WHERE id = $1`
+	query := `SELECT id, user_id, items, total_price, status, created_at, updated_at FROM orders WHERE id = $1`
 
 	row := or.db.QueryRowContext(ctx, query, id)
 
