@@ -7,6 +7,7 @@ import (
 	"errors"
 	"log/slog"
 
+	"github.com/go-chi/chi/middleware"
 	"github.com/google/uuid"
 )
 
@@ -16,24 +17,76 @@ type OrderPgRepository struct {
 }
 
 func (or *OrderPgRepository) Create(ctx context.Context, order *model.Order) error {
+	repoLogger := or.logger.With("request_id", middleware.GetReqID(ctx))
+
+	repoLogger.Info("Creating order", "order", order)
+
 	exec := `INSERT INTO orders (id, user_id, items, total_price, status) VALUES ($1, $2, $3, $4, $5)`
 
 	order.ID = uuid.NewString()
 
 	_, err := or.db.Exec(exec, order.ID, order.UserID, order.Items, order.TotalPrice, order.Status)
 	if err != nil {
+		repoLogger.Error("Could not create record in database", "order", order, "error", err)
 		return err
 	}
+
+	repoLogger.Info("Order created successfully", "order", order)
 
 	return nil
 }
 
 func (or *OrderPgRepository) FindByID(ctx context.Context, id string) (*model.Order, error) {
-	panic("not implemented") // TODO: Implement
+	repoLogger := or.logger.With("request_id", middleware.GetReqID(ctx))
+
+	repoLogger.Info("Retrieving order by id", "order_id", id)
+
+	query := `SELECT id, user_id, items, total_price, status, created_at, status FROM order WHERE id = $1`
+
+	row := or.db.QueryRowContext(ctx, query, id)
+
+	var order model.Order
+	err := row.Scan(&order)
+	if err != nil {
+		if errors.Is(sql.ErrNoRows, err) {
+			repoLogger.Error("No order with given id", "order_id", id, "error", err)
+		}
+
+		repoLogger.Error("Error reading database", "error", err)
+		return nil, err
+	}
+
+	repoLogger.Info("Retrieved order successfully", "order", order)
+
+	return &order, nil
 }
 
 func (or *OrderPgRepository) UpdateStatus(ctx context.Context, id string, newStatus string) error {
-	panic("not implemented") // TODO: Implement
+	repoLogger := or.logger.With("request_id", middleware.GetReqID(ctx))
+
+	repoLogger.Info("Updating status", "new_status", newStatus)
+
+	query := `UPDATE orders SET status = $1 WHERE id = $2`
+
+	res, err := or.db.Exec(query, newStatus, id)
+
+	if err != nil {
+		repoLogger.Error("Could not update database", "error", err)
+		return err
+	}
+
+	rowsAff, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAff == 0 {
+		repoLogger.Error("No order with given id found", "order_id", id, "error", err)
+		return sql.ErrNoRows
+	}
+
+	repoLogger.Info("Updated order status successfully", "order_id", id, "new_status", newStatus)
+
+	return nil
 }
 
 func NewOrderPgRepository(db *sql.DB, logger *slog.Logger) (*OrderPgRepository, error) {
@@ -43,6 +96,6 @@ func NewOrderPgRepository(db *sql.DB, logger *slog.Logger) (*OrderPgRepository, 
 
 	return &OrderPgRepository{
 		db:     db,
-		logger: logger,
+		logger: logger.With("file", "order_pg_repo.go"),
 	}, nil
 }
