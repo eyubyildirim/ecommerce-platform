@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/go-chi/chi/v5"
 	_ "github.com/lib/pq"
 )
 
@@ -31,11 +31,11 @@ func main() {
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
 	r.Route("/orders", func(r chi.Router) {
 		r.Post("/", orderHandler.CreateOrder)
+		r.Get("/{id}", orderHandler.GetOrderByID)
 	})
 
 	http.ListenAndServe(":8081", r)
