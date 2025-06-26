@@ -4,7 +4,10 @@ import (
 	"context"
 	"ecommerce-platform/services/order/model"
 	"ecommerce-platform/services/order/repository"
+	"encoding/json"
 	"log/slog"
+
+	"github.com/go-chi/chi/middleware"
 )
 
 type OrderService interface {
@@ -22,24 +25,43 @@ type orderServiceImpl struct {
 }
 
 func (or *orderServiceImpl) CreateOrder(ctx context.Context, userID string, items *[]model.OrderItem) (*model.Order, error) {
-	productPrice := float64(23.99)
-	return &model.Order{
-		ID:     "test",
-		UserID: "test-user",
-		Items: &[]model.OrderItem{
-			{
-				ProductID: "test-product-id",
-				Quantity:  2,
-				Price:     &productPrice,
-			},
-		},
-		TotalPrice: 47.98,
-		Status:     "PENDING",
-	}, nil
+	serviceLogger := or.logger.With("request_id", middleware.GetReqID(ctx), "user_id", userID, "items", items)
+
+	serviceLogger.Info("CreateOrder started")
+
+	var order model.Order
+	order.UserID = userID
+	itemsBytes, _ := json.Marshal(items)
+	order.Items = itemsBytes
+
+	order.TotalPrice = 50
+	order.Status = "PENDING"
+
+	serviceLogger.Info("Set total price and status", "total_price", order.TotalPrice, "status", order.Status)
+
+	err := or.orderRepo.Create(ctx, &order)
+	if err != nil {
+		serviceLogger.Error("CreateOrder failed")
+		return nil, err
+	}
+
+	serviceLogger.Info("CreateOrder completed successfully", "order", order)
+	return &order, nil
 }
 
 func (or *orderServiceImpl) GetOrderByID(ctx context.Context, id string) (*model.Order, error) {
-	panic("not implemented") // TODO: Implement
+	serviceLogger := or.logger.With("request_id", middleware.GetReqID(ctx), "order_id", id)
+
+	serviceLogger.Info("GetOrderByID started")
+
+	order, err := or.orderRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	serviceLogger.Info("GetOrderByID completed successfully")
+
+	return order, nil
 }
 
 func (or *orderServiceImpl) HandlePaymentSucceeded(ctx context.Context, orderID string) {
@@ -61,6 +83,6 @@ func (or *orderServiceImpl) HandleStockUnavailable(ctx context.Context, orderID 
 func NewOrderService(orderRepo repository.OrderRepository, logger *slog.Logger) *orderServiceImpl {
 	return &orderServiceImpl{
 		orderRepo: orderRepo,
-		logger:    logger,
+		logger:    logger.With("file", "order_service.go"),
 	}
 }
