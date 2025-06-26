@@ -52,6 +52,7 @@ func (or *OrderPgRepository) FindByID(ctx context.Context, id string) (*model.Or
 	if err != nil {
 		if errors.Is(sql.ErrNoRows, err) {
 			repoLogger.Error("No order with given id", "order_id", id, "error", err)
+			return nil, err
 		}
 
 		repoLogger.Error("Error reading database", "error", err)
