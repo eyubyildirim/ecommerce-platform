@@ -1,13 +1,16 @@
 package handler
 
 import (
+	"database/sql"
 	"ecommerce-platform/services/order/model"
 	"ecommerce-platform/services/order/service"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 
-	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 )
 
 type CreateOrderRequest struct {
@@ -23,13 +26,14 @@ type OrderHandler struct {
 func NewOrderHandler(orderService service.OrderService, logger *slog.Logger) *OrderHandler {
 	return &OrderHandler{
 		orderService: orderService,
-		logger:       logger,
+		logger:       logger.With("file", "order_handler.go"),
 	}
 }
 
 func (oh *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
+	reqId := middleware.GetReqID(r.Context())
 
-	reqLogger := oh.logger.With("request_id", middleware.GetReqID(r.Context()))
+	reqLogger := oh.logger.With("request_id", reqId)
 
 	reqLogger.Info("Processing new order request")
 
@@ -47,6 +51,30 @@ func (oh *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	reqLogger.Info("Order created successfully", "order", createdOrder)
+
 	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(createdOrder)
+}
+
+func (oh *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
+	reqLogger := oh.logger.With("request_id", middleware.GetReqID(r.Context()))
+
+	orderId := chi.URLParam(r, "id")
+
+	reqLogger.Info("Retrieving order by id", "order_id", orderId, "path", r.URL.Path)
+
+	order, err := oh.orderService.GetOrderByID(r.Context(), orderId)
+	if err != nil {
+		if errors.Is(sql.ErrNoRows, err) {
+			http.Error(w, "No order with given id", http.StatusNotFound)
+			return
+		}
+
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(order)
 }
