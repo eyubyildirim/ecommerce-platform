@@ -24,6 +24,7 @@ func (or *OrderPgRepository) Create(ctx context.Context, order *model.Order) err
 	exec := `INSERT INTO orders (id, user_id, items, total_price, status) VALUES ($1, $2, $3, $4, $5)`
 
 	order.ID = uuid.NewString()
+	repoLogger.Info("UUID generated for order", "order", order)
 
 	_, err := or.db.Exec(exec, order.ID, order.UserID, order.Items, order.TotalPrice, order.Status)
 	if err != nil {
