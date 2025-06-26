@@ -19,20 +19,21 @@ type OrderPgRepository struct {
 func (or *OrderPgRepository) Create(ctx context.Context, order *model.Order) error {
 	repoLogger := or.logger.With("request_id", middleware.GetReqID(ctx))
 
-	repoLogger.Info("Creating order", "order", order)
+	repoLogger.Info("Create started", "order", order)
 
-	exec := `INSERT INTO orders (id, user_id, items, total_price, status) VALUES ($1, $2, $3, $4, $5)`
+	exec := `INSERT INTO orders (id, user_id, items, total_price, status) VALUES ($1, $2, $3, $4, $5) RETURNING created_at, updated_at`
 
 	order.ID = uuid.NewString()
 	repoLogger.Info("UUID generated for order", "order", order)
 
-	_, err := or.db.Exec(exec, order.ID, order.UserID, order.Items, order.TotalPrice, order.Status)
+	createdOrder := or.db.QueryRowContext(ctx, exec, order.ID, order.UserID, order.Items, order.TotalPrice, order.Status)
+	err := createdOrder.Scan(order.CreatedAt, order.UpdatedAt)
 	if err != nil {
 		repoLogger.Error("Could not create record in database", "order", order, "error", err)
 		return err
 	}
 
-	repoLogger.Info("Order created successfully", "order", order)
+	repoLogger.Info("Create successful", "order", order)
 
 	return nil
 }
@@ -40,7 +41,7 @@ func (or *OrderPgRepository) Create(ctx context.Context, order *model.Order) err
 func (or *OrderPgRepository) FindByID(ctx context.Context, id string) (*model.Order, error) {
 	repoLogger := or.logger.With("request_id", middleware.GetReqID(ctx))
 
-	repoLogger.Info("Retrieving order by id", "order_id", id)
+	repoLogger.Info("FindByID started", "order_id", id)
 
 	query := `SELECT id, user_id, items, total_price, status, created_at, status FROM order WHERE id = $1`
 
@@ -57,7 +58,7 @@ func (or *OrderPgRepository) FindByID(ctx context.Context, id string) (*model.Or
 		return nil, err
 	}
 
-	repoLogger.Info("Retrieved order successfully", "order", order)
+	repoLogger.Info("FindByID successful", "order", order)
 
 	return &order, nil
 }
@@ -65,7 +66,7 @@ func (or *OrderPgRepository) FindByID(ctx context.Context, id string) (*model.Or
 func (or *OrderPgRepository) UpdateStatus(ctx context.Context, id string, newStatus string) error {
 	repoLogger := or.logger.With("request_id", middleware.GetReqID(ctx))
 
-	repoLogger.Info("Updating status", "new_status", newStatus)
+	repoLogger.Info("UpdateStatus started", "new_status", newStatus)
 
 	query := `UPDATE orders SET status = $1 WHERE id = $2`
 
@@ -85,7 +86,7 @@ func (or *OrderPgRepository) UpdateStatus(ctx context.Context, id string, newSta
 		return sql.ErrNoRows
 	}
 
-	repoLogger.Info("Updated order status successfully", "order_id", id, "new_status", newStatus)
+	repoLogger.Info("UpdateStatus successful", "order_id", id, "new_status", newStatus)
 
 	return nil
 }
