@@ -15,11 +15,28 @@ type InventoryService interface {
 	HandleReserveStock(ctx context.Context, orderID string, items []*model.Product) error
 	AddProduct(ctx context.Context, name string, price float64, quantity int) (*model.Product, error)
 	GetPrice(ctx context.Context, id string) (float64, error)
+	GetProductsByIDs(ctx context.Context, ids []string) ([]*model.Product, error)
 }
 
 type inventoryServiceImpl struct {
 	inventoryRepo repository.InventoryRepository
 	logger        *slog.Logger
+}
+
+func (in *inventoryServiceImpl) GetProductsByIDs(ctx context.Context, ids []string) ([]*model.Product, error) {
+	serviceLogger := in.logger.With("request_id", middleware.GetReqID(ctx), "product_ids", ids)
+
+	serviceLogger.Info("GetProductsByIDs started")
+
+	products, err := in.inventoryRepo.FindManyByIDs(ctx, ids)
+	if err != nil {
+		serviceLogger.Error("Could not get product", "error", err)
+		return nil, err
+	}
+
+	serviceLogger.Info("GetProductsByIDs successful", "products", products)
+
+	return products, nil
 }
 
 func (in *inventoryServiceImpl) GetPrice(ctx context.Context, id string) (float64, error) {
