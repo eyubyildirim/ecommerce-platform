@@ -51,7 +51,10 @@ services:
       - DB_URL=postgres://user:password@postgres:5432/ecommerce_db?sslmode=disable
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
       - PORT=8081
+      - INVENTORY_SERVICE_GRPC_ADDR=inventory-service:9090
     depends_on:
+      inventory-service:
+        condition: service_started
       postgres:
         condition: service_healthy
       rabbitmq:
@@ -87,6 +90,7 @@ services:
     container_name: inventory_service_app
     ports:
       - "8082:8082" # Example of exposing another service's port
+      - "9090:9090"
     volumes:
       - .:/app
     environment:
@@ -94,6 +98,7 @@ services:
       - DB_URL=postgres://user:password@postgres:5432/ecommerce_db?sslmode=disable
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
       - PORT=8082
+      - GRPC_PORT=9090
     depends_on:
       postgres:
         condition: service_healthy
