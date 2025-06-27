@@ -9,7 +9,7 @@ DB_URL := "postgres://user:password@localhost:5432/ecommerce_db?sslmode=disable"
 BIN_DIR := bin
 
 # --- Phony Targets ---
-.PHONY: all up down logs build clean migrate-create migrate-up migrate-down help
+.PHONY: all up down logs build clean migrate-create migrate-up migrate-down help proto-gen
 
 # --- Main Commands ---
 
@@ -61,6 +61,10 @@ migrate-up:
 migrate-down:
 	@echo "Applying DOWN migrations..."
 	@migrate -path migrations -database $(DB_URL) -verbose down
+
+proto-gen:
+	@echo "Generating gRPC code..."
+	protoc --go_out=. --go-grpc_out=. pkg/grpc/inventory/inventory.proto
 
 # --- Help ---
 help:
