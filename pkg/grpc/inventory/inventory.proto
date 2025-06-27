@@ -1,0 +1,31 @@
+// pkg/grpc/inventory/inventory.proto
+
+syntax = "proto3";
+
+package inventory;
+
+// The option for the Go package path is crucial for code generation.
+option go_package = "pkg/grpc/inventory";
+
+// The InventoryService provides methods for querying product information.
+service InventoryService {
+  // GetProductInfo takes a list of product IDs and returns their information.
+  rpc GetProductInfo(GetProductInfoRequest) returns (GetProductInfoResponse) {}
+}
+
+// The request message containing a list of product IDs.
+message GetProductInfoRequest {
+  repeated string product_ids = 1;
+}
+
+// A message containing the essential info the Order Service needs.
+message ProductInfo {
+  string id = 1;
+  string name = 2;
+  double price = 3;
+}
+
+// The response message containing a list of product information.
+message GetProductInfoResponse {
+  repeated ProductInfo products = 1;
+}
