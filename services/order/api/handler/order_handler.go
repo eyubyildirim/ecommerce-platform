@@ -14,8 +14,8 @@ import (
 )
 
 type CreateOrderRequest struct {
-	UserID string             `json:"userId"`
-	Items  *[]model.OrderItem `json:"items"`
+	UserID string            `json:"userId"`
+	Items  []model.OrderItem `json:"items"`
 }
 
 type OrderHandler struct {
